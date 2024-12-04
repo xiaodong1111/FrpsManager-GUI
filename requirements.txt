@@ -1,0 +1,11 @@
+# GUI
+PyQt6>=6.4.0
+
+# System utilities
+psutil>=5.9.0
+
+# Network
+requests>=2.28.0
+
+# Build tools
+pyinstaller>=5.7.0  # 用于打包exe 

@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+build/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.vs/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Project specific
+*.log
+temp_frpc.ini
+frpc.exe
+icon.ico
+
+# Temp files
+*.tmp
+*.bak 
