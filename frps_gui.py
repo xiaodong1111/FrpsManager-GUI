@@ -7,10 +7,10 @@ import webbrowser
 import requests
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QPushButton, 
                             QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-                            QTextEdit, QMessageBox, QInputDialog)
+                            QTextEdit, QMessageBox, QInputDialog, QComboBox)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon
-CURRENT_VERSION = "1.0.1"
+CURRENT_VERSION = "1.0.2"
 VERSION_API = "https://www.dazhuzai.cn/api.php"
 
 def is_port_in_use(port):
@@ -43,10 +43,11 @@ class FRPSThread(QThread):
     success_signal = pyqtSignal()
     stop_signal = pyqtSignal()
     
-    def __init__(self, server_port, remote_port):
+    def __init__(self, server_port, remote_port, server_config=1):
         super().__init__()
         self.server_port = server_port
         self.remote_port = remote_port
+        self.server_config = server_config  # 1 表示服务器1，2 表示服务器2
         self.process = None
         
     def run(self):
@@ -59,11 +60,24 @@ class FRPSThread(QThread):
                 except:
                     pass
             
-            # 配置内容保存在内存中
-            config = f"""[common]
-server_addr = 120.46.131.86
+            # 根据不同服务器选择不同配置
+            if self.server_config == 1:
+                config = f"""[common]
+server_addr = xxxx
 server_port = 15443
 token = xMR8FijgeyRGXmvy
+
+[tcp_{self.server_port}]
+type = tcp
+local_ip = 127.0.0.1
+local_port = {self.remote_port}
+remote_port = {self.server_port}
+"""
+            else:
+                config = f"""[common]
+server_addr = xxxx
+server_port = 7000
+token = token123456
 
 [tcp_{self.server_port}]
 type = tcp
@@ -173,7 +187,7 @@ class MainWindow(QMainWindow):
     def create_controls(self, layout):
         port_layout = QHBoxLayout()
         
-        server_port_label = QLabel("服务端端口:")
+        server_port_label = QLabel("服务端口:")
         self.server_port_input = QLineEdit()
         self.server_port_input.setText("")
         
@@ -185,17 +199,61 @@ class MainWindow(QMainWindow):
         port_layout.addWidget(self.server_port_input)
         port_layout.addWidget(proxy_port_label)
         port_layout.addWidget(self.proxy_port_input)
+        
+        # 修改服务器选择下拉框部分
+        server_select_layout = QHBoxLayout()
+        server_select_widget = QWidget()  # 创建一个容器widget
+        server_select_widget.setStyleSheet("""
+            QWidget {
+                border: 1px solid #cccccc;
+                padding: 5px;
+                background-color: white;
+            }
+            QComboBox {
+                border: 1px solid #cccccc;
+                padding: 3px;
+                min-width: 100px;
+            }
+            QComboBox:hover {
+                border: 1px solid #bbbbbb;
+            }
+            QLabel {
+                border: none;
+            }
+        """)
+        
+        server_inner_layout = QHBoxLayout()  # 创建内部布局
+        server_inner_layout.setContentsMargins(5, 5, 5, 5)  # 设置内边距
+        
+        server_label = QLabel("选择服务器:")
+        self.server_combo = QComboBox()
+        self.server_combo.addItems(["服务器1", "服务器2"])
+        
+        server_inner_layout.addWidget(server_label)
+        server_inner_layout.addWidget(self.server_combo)
+        server_inner_layout.addStretch()
+        
+        server_select_widget.setLayout(server_inner_layout)
+        server_select_layout.addWidget(server_select_widget)
+        server_select_layout.addStretch()
+        
         button_layout = QHBoxLayout()
         self.start_button = QPushButton("启动FRPS")
-        self.start_button.clicked.connect(self.start_frps)
         self.stop_button = QPushButton("停止FRPS")
+        
+        self.start_button.clicked.connect(self.start_frps)
         self.stop_button.clicked.connect(self.stop_frps)
+        
         self.stop_button.setEnabled(False)
+        
         button_layout.addWidget(self.start_button)
         button_layout.addWidget(self.stop_button)
+        
         self.log_area = QTextEdit()
         self.log_area.setReadOnly(True)
+        
         layout.addLayout(port_layout)
+        layout.addLayout(server_select_layout)
         layout.addLayout(button_layout)
         layout.addWidget(self.log_area)
             
@@ -221,13 +279,17 @@ class MainWindow(QMainWindow):
             if not (1024 <= server_port <= 65535) or not (1024 <= proxy_port <= 65535):
                 QMessageBox.warning(self, "错误", "端口号必须在1024-65535之间")
                 return
+            
             if is_port_in_use(server_port):
                 kill_frpc_process()
                 if is_port_in_use(server_port):
-                    QMessageBox.warning(self, "错", f"本地端口 {server_port} 已被占用，请检查是否有其他程序在使用此端口")
+                    QMessageBox.warning(self, "错误", f"本地端口 {server_port} 已被占用，请检查是否有其他程序在使用此端口")
                     return
-                
-            self.frps_thread = FRPSThread(server_port, proxy_port)
+            
+            # 获取选择的服务器配置（1或2）
+            server_config = self.server_combo.currentIndex() + 1
+            
+            self.frps_thread = FRPSThread(server_port, proxy_port, server_config)
             self.frps_thread.output_signal.connect(self.update_log)
             self.frps_thread.success_signal.connect(self.on_frps_success)
             self.frps_thread.start()
